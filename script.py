@@ -15,10 +15,10 @@ OUTPUT = os.getenv("OUTPUT", "canales.m3u")
 
 session = requests.Session()
 
-USER_AGENT = os.getenv("USER_AGENT", "MAG250")
+USER_AGENT = os.getenv("USER_AGENT", "MAG270")
 COMMON_HEADERS = {
     "User-Agent": USER_AGENT,
-    "X-User-Agent": "Model: MAG250; Link: Ethernet",
+    "X-User-Agent": "Model: MAG270; Link: Ethernet",
     "Referer": PORTAL.replace("/server/load.php", "/c/") if PORTAL else "",
     "Cookie": f"mac={MAC}; stb_lang=es; timezone=Europe/Madrid;",
 }
@@ -107,10 +107,10 @@ def get_profile(token):
         "type": "stb",
         "action": "get_profile",
         "hd": "1",
-        "ver": "ImageDescription: .2.18-r23-250; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58c[...]",
+        "ver": "ImageDescription: .2.18-r23-270; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58c[...[...]
         "num_banks": "2",
         "sn": SERIAL_NUMBER,
-        "stb_type": "MAG250",
+        "stb_type": "MAG270",
         "client_type": "STB",
         "image_version": "218",
         "video_out": "hdmi",
@@ -120,7 +120,7 @@ def get_profile(token):
         "auth_second_step": "1",
         "hw_version": "1.7-BD-00",
         "not_valid_token": "",
-        "metrics": '{{"mac":"{}","sn":"{}","model":"MAG250","type":"STB","uid":"","random":"{}"}}'.format(
+        "metrics": '{{"mac":"{}","sn":"{}","model":"MAG270","type":"STB","uid":"","random":"{}"}}'.format(
             MAC, SERIAL_NUMBER, int(time.time())
         ),
         "hw_version_2": "",
