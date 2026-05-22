@@ -1,1 +1,36 @@
+name: Ejecutar script Python
 
+on:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ejecutar script
+        env:
+          PORTAL: ${{ secrets.PORTAL }}
+          MAC: ${{ secrets.MAC }}
+          SERIAL_NUMBER: ${{ secrets.SERIAL_NUMBER }}
+          DEVICE_ID: ${{ secrets.DEVICE_ID }}
+          DEVICE_ID2: ${{ secrets.DEVICE_ID2 }}
+          OUTPUT: salida.m3u
+        run: |
+          python script.py
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados
+          path: |
+            salida.m3u
+            debug_payload.json
