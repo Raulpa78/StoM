@@ -10,6 +10,7 @@ MAC = os.getenv("MAC", "")
 SERIAL_NUMBER = os.getenv("SERIAL_NUMBER", "")
 DEVICE_ID = os.getenv("DEVICE_ID", "")
 DEVICE_ID2 = os.getenv("DEVICE_ID2", "")
+AUTH_TOKEN = os.getenv("AUTH_TOKEN", "")
 OUTPUT = os.getenv("OUTPUT", "canales.m3u")
 # ==========================
 
@@ -31,6 +32,7 @@ def validate_config():
         "SERIAL_NUMBER": SERIAL_NUMBER,
         "DEVICE_ID": DEVICE_ID,
         "DEVICE_ID2": DEVICE_ID2,
+        "AUTH_TOKEN": AUTH_TOKEN,
     }
     
     missing_vars = [var for var, value in required_vars.items() if not value]
@@ -77,11 +79,11 @@ def call_api(params, token=None):
         raise
 
 def handshake():
-    """Perform initial handshake to get authentication token."""
+    """Perform initial handshake using the AUTH_TOKEN from environment."""
     params = {
         "type": "stb",
         "action": "handshake",
-        "token": "",
+        "token": AUTH_TOKEN,
         "JsHttpRequest": "1-xml"
     }
     
@@ -107,7 +109,7 @@ def get_profile(token):
         "type": "stb",
         "action": "get_profile",
         "hd": "1",
-        "ver": "ImageDescription: .2.18-r23-270; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58c",
+        "ver": "ImageDescription: .2.18-r23-270; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58[...]",
         "num_banks": "2",
         "sn": SERIAL_NUMBER,
         "stb_type": "MAG270",
