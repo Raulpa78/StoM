@@ -107,7 +107,7 @@ def get_profile(token):
         "type": "stb",
         "action": "get_profile",
         "hd": "1",
-        "ver": "ImageDescription: .2.18-r23-270; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58c[...[...]
+        "ver": "ImageDescription: .2.18-r23-270; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.5.; API Version: JS API version: 343; STB API version: 146; Player Engine version: x58c",
         "num_banks": "2",
         "sn": SERIAL_NUMBER,
         "stb_type": "MAG270",
