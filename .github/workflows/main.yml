@@ -21,15 +21,16 @@ jobs:
       
       - name: Ejecutar script
         env:
-          PORTAL: ${{ secrets.PORTAL }}
-          MAC: ${{ secrets.MAC }}
-          SERIAL_NUMBER: ${{ secrets.SERIAL_NUMBER }}
-          DEVICE_ID: ${{ secrets.DEVICE_ID }}
-          DEVICE_ID2: ${{ secrets.DEVICE_ID2 }}
-          USER_AGENT: "MAG270"
-          OUTPUT: salida.m3u
+         PORTAL: ${{ secrets.PORTAL }}
+         MAC: ${{ secrets.MAC }}
+         SERIAL_NUMBER: ${{ secrets.SERIAL_NUMBER }}
+         DEVICE_ID: ${{ secrets.DEVICE_ID }}
+         DEVICE_ID2: ${{ secrets.DEVICE_ID2 }}
+         AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}  # Add this line
+         USER_AGENT: "MAG270"
+         OUTPUT: salida.m3u
         run: |
-          python script.py
+         python script.py
 
       - name: Subir artefactos
         uses: actions/upload-artifact@v4
