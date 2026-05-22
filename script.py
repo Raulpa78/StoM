@@ -71,10 +71,7 @@ def get_profile(token):
         "prehash": "",
         "JsHttpRequest": "1-xml"
     }
-def get_profile(token):
-    params = {
-        # ... params ...
-    }
+
     data = call_api(params, token=token)
     channels = data.get("js", {}).get("data", [])
     return channels
@@ -130,11 +127,8 @@ def main():
     token = handshake()
     print(f"[+] Token obtenido: {token}")
 
-    print("[*] Perfil...")
-    get_profile(token)
-    channels = get_profile(token)
-    print("[*] Obteniendo canales...")
-    channels = get_channels(token)
+    print("[*] Obteniendo perfil...")
+    channels = get_profile(token)  # Remove duplicate call, use result directly
     print(f"[+] Canales encontrados: {len(channels)}")
 
     print("[*] Generando M3U...")
