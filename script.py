@@ -1,3 +1,4 @@
+import os
 import requests
 import re
 import time
@@ -13,6 +14,7 @@ OUTPUT = os.getenv("OUTPUT", "canales.m3u")
 
 session = requests.Session()
 
+USER_AGENT = os.getenv("USER_AGENT", "MAG250")
 COMMON_HEADERS = {
     "User-Agent": USER_AGENT,
     "X-User-Agent": "Model: MAG250; Link: Ethernet",
@@ -69,10 +71,14 @@ def get_profile(token):
         "prehash": "",
         "JsHttpRequest": "1-xml"
     }
-    return call_api(params, token=token)
+def get_profile(token):
+    params = {
+        # ... params ...
+    }
+    data = call_api(params, token=token)
     channels = data.get("js", {}).get("data", [])
     return channels
-
+    
 def get_create_link(token, cmd):
     params = {
         "type": "itv",
@@ -126,7 +132,7 @@ def main():
 
     print("[*] Perfil...")
     get_profile(token)
-
+    channels = get_profile(token)
     print("[*] Obteniendo canales...")
     channels = get_channels(token)
     print(f"[+] Canales encontrados: {len(channels)}")
