@@ -83,7 +83,7 @@ def handshake():
     params = {
         "type": "stb",
         "action": "handshake",
-        "token": AUTH_TOKEN,
+        "token": MAC,
         "JsHttpRequest": "1-xml"
     }
     
