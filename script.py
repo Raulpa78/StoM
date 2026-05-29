@@ -10,7 +10,6 @@ MAC = os.getenv("MAC", "")
 SERIAL_NUMBER = os.getenv("SERIAL_NUMBER", "")
 DEVICE_ID = os.getenv("DEVICE_ID", "")
 DEVICE_ID2 = os.getenv("DEVICE_ID2", "")
-AUTH_TOKEN = os.getenv("AUTH_TOKEN", "")
 OUTPUT = os.getenv("OUTPUT", "canales.m3u")
 # ==========================
 
@@ -32,8 +31,7 @@ def validate_config():
         "SERIAL_NUMBER": SERIAL_NUMBER,
         "DEVICE_ID": DEVICE_ID,
         "DEVICE_ID2": DEVICE_ID2,
-        "AUTH_TOKEN": AUTH_TOKEN,
-    }
+        }
     
     missing_vars = [var for var, value in required_vars.items() if not value]
     
