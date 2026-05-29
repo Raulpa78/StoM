@@ -26,7 +26,7 @@ jobs:
          SERIAL_NUMBER: ${{ secrets.SERIAL_NUMBER }}
          DEVICE_ID: ${{ secrets.DEVICE_ID }}
          DEVICE_ID2: ${{ secrets.DEVICE_ID2 }}
-         AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}  # Add this line
+           
          USER_AGENT: "MAG270"
          OUTPUT: salida.m3u
         run: |
