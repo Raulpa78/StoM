@@ -4,7 +4,6 @@ import os
 import sys
 import re
 import base64
-from datetime import datetime
 from urllib.parse import urlparse
 from typing import Dict, Optional, Any, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,13 +24,11 @@ COLORS = {
 
 
 def print_colored(text: str, color: str) -> None:
-    color_code = COLORS.get(color.lower(), "\033[m")
-    print(f"{color_code}{text}\033[m")
+    print(f"{COLORS.get(color, '')}{text}\033[m")
 
 
 def input_colored(prompt: str, color: str) -> str:
-    color_code = COLORS.get(color.lower(), "\033[m")
-    return input(f"{color_code}{prompt}\033[m")
+    return input(f"{COLORS.get(color, '')}{prompt}\033[m")
 
 
 # ============================================================
@@ -48,11 +45,9 @@ def get_base_url() -> str:
 
     parsed = urlparse(base_url_input)
     if not parsed.scheme or not parsed.hostname:
-        raise ValueError("URL inválida. Ejemplo correcto: http://dominio:puerto")
+        raise ValueError("URL inválida. Ejemplo: http://dominio:puerto")
 
-    if parsed.port:
-        return f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
-    return f"{parsed.scheme}://{parsed.hostname}"
+    return f"{parsed.scheme}://{parsed.hostname}:{parsed.port}" if parsed.port else f"{parsed.scheme}://{parsed.hostname}"
 
 
 def get_env_or_input(env_name: str, prompt: str, optional: bool = True) -> str:
@@ -61,7 +56,7 @@ def get_env_or_input(env_name: str, prompt: str, optional: bool = True) -> str:
         return value
 
     if not sys.stdin.isatty():
-        return "" if optional else ValueError(f"Falta {env_name} y no hay entrada interactiva.")
+        return "" if optional else ValueError(f"Falta {env_name}")
 
     try:
         return input_colored(prompt, "cyan").strip()
@@ -78,16 +73,7 @@ def get_mac_address() -> str:
 #  PETICIONES AL SERVIDOR
 # ============================================================
 
-def get_token(
-    session: requests.Session,
-    base_url: str,
-    mac: str,
-    serial: str = "",
-    device_id: str = "",
-    device_id_2: str = "",
-    timeout: int = 10
-) -> Optional[str]:
-
+def get_token(session, base_url, mac, serial="", device_id="", device_id_2="", timeout=10):
     url = f"{base_url}/portal.php?action=handshake&type=stb&token=&JsHttpRequest=1-xml"
     headers = {"Authorization": f"MAC {mac}"}
 
@@ -102,76 +88,38 @@ def get_token(
             else session.get(url, headers=headers, timeout=timeout)
 
         res.raise_for_status()
-        data = res.json()
-
-        token = data.get("js", {}).get("token")
-        if not token:
-            print_colored("No se encontró token en la respuesta.", "red")
-            print_colored(res.text, "yellow")
-            return None
-
-        return token
+        return res.json().get("js", {}).get("token")
 
     except Exception as e:
         print_colored(f"Error fetching token: {e}", "red")
         return None
 
 
-def get_vod_categories(
-    session: requests.Session,
-    base_url: str,
-    token: str
-) -> Optional[List[Dict[str, Any]]]:
-
+def get_vod_categories(session, base_url, token):
     url = f"{base_url}/portal.php?type=vod&action=get_categories&JsHttpRequest=1-xml"
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
         res = session.get(url, headers=headers, timeout=10)
         res.raise_for_status()
-
-        categories = res.json().get("js")
-        if not isinstance(categories, list):
-            print_colored("La respuesta no contiene una lista válida de categorías.", "red")
-            return None
-
-        return categories
-
+        return res.json().get("js")
     except Exception as e:
         print_colored(f"Error fetching VOD categories: {e}", "red")
         return None
 
 
-def get_vod_list(
-    session: requests.Session,
-    base_url: str,
-    token: str,
-    category_id: str,
-    page: int = 1,
-    timeout: int = 10
-) -> Optional[List[Dict[str, Any]]]:
-
+def get_vod_list(session, base_url, token, category_id, page=1):
     url = (
         f"{base_url}/portal.php?type=vod&action=get_ordered_list"
         f"&category={category_id}&p={page}&JsHttpRequest=1-xml"
     )
-
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
-        res = session.get(url, headers=headers, timeout=timeout)
+        res = session.get(url, headers=headers, timeout=10)
         res.raise_for_status()
-
-        data = res.json().get("js", {})
-        vod_list = data.get("data")
-
-        if not vod_list:
-            return None
-
-        return vod_list
-
-    except Exception as e:
-        print_colored(f"Error obteniendo VODs: {e}", "red")
+        return res.json().get("js", {}).get("data")
+    except:
         return None
 
 
@@ -186,19 +134,21 @@ def resolve_vod_url(session, base_url, token, cmd_value):
     except Exception:
         return None
 
+    # Normalizar campos para servidores que usan nombres distintos
+    if "stream_id" in payload:
+        payload["id"] = payload["stream_id"]
+
+    if "target_container" in payload and isinstance(payload["target_container"], list):
+        payload["type"] = payload["target_container"][0]
+
     url = f"{base_url}/portal.php?type=vod&action=create_link&JsHttpRequest=1-xml"
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
         res = session.post(url, headers=headers, json=payload, timeout=10)
         res.raise_for_status()
-
-        data = res.json().get("js", {})
-        real_url = data.get("cmd")
-
-        return real_url
-
-    except Exception:
+        return res.json().get("js", {}).get("cmd")
+    except:
         return None
 
 
@@ -210,14 +160,7 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9_\-\.]', '_', name)
 
 
-def export_m3u_by_category(
-    session,
-    base_url,
-    token,
-    vod_items: List[Dict[str, Any]],
-    category_title: str
-) -> None:
-
+def export_m3u_by_category(session, base_url, token, vod_items, category_title):
     safe_title = sanitize_filename(category_title)
     filename = f"tar_nex_vod_{safe_title}.m3u"
 
@@ -232,10 +175,8 @@ def export_m3u_by_category(
                 continue
 
             # Resolver URL real
-            if cmd_value.startswith("ey"):  # Base64 típico
-                stream_url = resolve_vod_url(session, base_url, token, cmd_value)
-            else:
-                stream_url = cmd_value
+            stream_url = resolve_vod_url(session, base_url, token, cmd_value) \
+                if cmd_value.startswith("ey") else cmd_value
 
             if not stream_url:
                 continue
@@ -250,7 +191,7 @@ def export_m3u_by_category(
 #  DESCARGA DE CARÁTULAS MULTIHILO
 # ============================================================
 
-def download_poster(url: str, save_path: str) -> bool:
+def download_poster(url, save_path):
     try:
         res = requests.get(url, timeout=10, stream=True)
         res.raise_for_status()
@@ -260,17 +201,11 @@ def download_poster(url: str, save_path: str) -> bool:
                 f.write(chunk)
 
         return True
-
-    except Exception:
+    except:
         return False
 
 
-def download_posters_for_category(
-    vod_items: List[Dict[str, Any]],
-    category_title: str,
-    max_workers: int = 20
-) -> None:
-
+def download_posters_for_category(vod_items, category_title, max_workers=20):
     folder = f"posters_{sanitize_filename(category_title)}"
     os.makedirs(folder, exist_ok=True)
 
@@ -282,11 +217,8 @@ def download_posters_for_category(
         for vod in vod_items:
             title = vod.get("name", "Sin título")
             poster_url = (
-                vod.get("poster") or
-                vod.get("cover") or
-                vod.get("screenshot") or
-                vod.get("icon") or
-                None
+                vod.get("poster") or vod.get("cover") or
+                vod.get("screenshot") or vod.get("icon")
             )
 
             if not poster_url:
@@ -295,12 +227,10 @@ def download_posters_for_category(
             filename = sanitize_filename(title) + ".jpg"
             save_path = os.path.join(folder, filename)
 
-            tasks.append(
-                executor.submit(download_poster, poster_url, save_path)
-            )
+            tasks.append(executor.submit(download_poster, poster_url, save_path))
 
         completed = 0
-        for future in as_completed(tasks):
+        for _ in as_completed(tasks):
             completed += 1
             print_colored(f"Carátulas descargadas: {completed}/{len(tasks)}", "cyan")
 
@@ -309,13 +239,7 @@ def download_posters_for_category(
 #  PROCESAR TODAS LAS CATEGORÍAS
 # ============================================================
 
-def fetch_all_vods_by_category(
-    session: requests.Session,
-    base_url: str,
-    token: str,
-    categories: List[Dict[str, Any]]
-) -> Dict[str, List[Dict[str, Any]]]:
-
+def fetch_all_vods_by_category(session, base_url, token, categories):
     result = {}
 
     for cat in categories:
@@ -332,7 +256,6 @@ def fetch_all_vods_by_category(
 
         while True:
             vod_list = get_vod_list(session, base_url, token, cat_id, page)
-
             if not vod_list:
                 break
 
@@ -348,7 +271,7 @@ def fetch_all_vods_by_category(
 #  MAIN
 # ============================================================
 
-def main() -> None:
+def main():
     try:
         base_url = get_base_url()
         mac = get_mac_address()
@@ -388,6 +311,7 @@ def main() -> None:
         for c in filtered_categories:
             print_colored(f"- {c.get('title')}", "cyan")
 
+        # SOLO procesar categorías filtradas
         vod_by_category = fetch_all_vods_by_category(session, base_url, token, filtered_categories)
 
         total_vods = sum(len(v) for v in vod_by_category.values())
