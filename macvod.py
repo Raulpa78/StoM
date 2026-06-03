@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import re
+import base64
 from datetime import datetime
 from urllib.parse import urlparse
 from typing import Dict, Optional, Any, List
@@ -175,6 +176,33 @@ def get_vod_list(
 
 
 # ============================================================
+#  RESOLVER URL REAL DEL VOD
+# ============================================================
+
+def resolve_vod_url(session, base_url, token, cmd_value):
+    try:
+        decoded = base64.b64decode(cmd_value).decode("utf-8")
+        payload = json.loads(decoded)
+    except Exception:
+        return None
+
+    url = f"{base_url}/portal.php?type=vod&action=create_link&JsHttpRequest=1-xml"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        res = session.post(url, headers=headers, json=payload, timeout=10)
+        res.raise_for_status()
+
+        data = res.json().get("js", {})
+        real_url = data.get("cmd")
+
+        return real_url
+
+    except Exception:
+        return None
+
+
+# ============================================================
 #  EXPORTACIÓN A M3U POR CATEGORÍA
 # ============================================================
 
@@ -183,6 +211,9 @@ def sanitize_filename(name: str) -> str:
 
 
 def export_m3u_by_category(
+    session,
+    base_url,
+    token,
     vod_items: List[Dict[str, Any]],
     category_title: str
 ) -> None:
@@ -195,7 +226,16 @@ def export_m3u_by_category(
 
         for vod in vod_items:
             title = vod.get("name", "Sin título")
-            stream_url = vod.get("cmd", "")
+            cmd_value = vod.get("cmd", "")
+
+            if not cmd_value:
+                continue
+
+            # Resolver URL real
+            if cmd_value.startswith("ey"):  # Base64 típico
+                stream_url = resolve_vod_url(session, base_url, token, cmd_value)
+            else:
+                stream_url = cmd_value
 
             if not stream_url:
                 continue
@@ -337,15 +377,24 @@ def main() -> None:
             print_colored("No se pudieron obtener categorías VOD.", "red")
             sys.exit(1)
 
-        print_colored(f"Total categorías encontradas: {len(vod_categories)}", "green")
+        # FILTRO Hindi / ES
+        filtered_categories = [
+            c for c in vod_categories
+            if any(keyword.lower() in c.get("title", "").lower()
+                   for keyword in ["hindi", "es", "español", "spanish"])
+        ]
 
-        vod_by_category = fetch_all_vods_by_category(session, base_url, token, vod_categories)
+        print_colored(f"Categorías filtradas: {len(filtered_categories)}", "yellow")
+        for c in filtered_categories:
+            print_colored(f"- {c.get('title')}", "cyan")
+
+        vod_by_category = fetch_all_vods_by_category(session, base_url, token, filtered_categories)
 
         total_vods = sum(len(v) for v in vod_by_category.values())
         print_colored(f"Total VODs encontrados: {total_vods}", "green")
 
         for category_title, vod_items in vod_by_category.items():
-            export_m3u_by_category(vod_items, category_title)
+            export_m3u_by_category(session, base_url, token, vod_items, category_title)
             download_posters_for_category(vod_items, category_title)
 
     except Exception as e:
