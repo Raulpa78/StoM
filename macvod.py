@@ -318,12 +318,18 @@ def main():
             print_colored("No se pudieron obtener categorías VOD.", "red")
             sys.exit(1)
 
-        # FILTRO Hindi / ES
-        filtered_categories = [
-            c for c in vod_categories
-            if any(keyword.lower() in c.get("title", "").lower()
-                   for keyword in ["hindi", "es", "español", "spanish"])
-        ]
+        # FILTRO CORRECTO (solo ES y HINDI reales)
+        filtered_categories = []
+        for c in vod_categories:
+            title = c.get("title", "").lower()
+
+            if "┃es┃" in title or title.startswith("┃es┃"):
+                filtered_categories.append(c)
+                continue
+
+            if "hindi" in title:
+                filtered_categories.append(c)
+                continue
 
         print_colored(f"Categorías filtradas: {len(filtered_categories)}", "yellow")
         for c in filtered_categories:
