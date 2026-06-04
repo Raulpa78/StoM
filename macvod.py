@@ -124,7 +124,7 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 
 
 # ============================================================
-#  RESOLVER URL REAL DEL VOD (CORREGIDO)
+#  RESOLVER URL REAL DEL VOD (VERSIÓN FINAL)
 # ============================================================
 
 def resolve_vod_url(session, base_url, token, vod):
@@ -141,9 +141,8 @@ def resolve_vod_url(session, base_url, token, vod):
     except Exception:
         return None
 
-    # Usar el ID REAL del VOD (no stream_id)
-    if "id" in vod:
-        payload["id"] = vod["id"]
+    # Usar el ID REAL del VOD
+    payload["id"] = vod["id"]
 
     # Normalizar target_container (viene como string)
     tc = payload.get("target_container")
@@ -172,7 +171,7 @@ def resolve_vod_url(session, base_url, token, vod):
 
 
 # ============================================================
-#  RESOLVER URLs EN PARALELO (TURBO MODE) — CORREGIDO
+#  RESOLVER URLs EN PARALELO (TURBO MODE)
 # ============================================================
 
 def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
@@ -290,8 +289,6 @@ def fetch_all_vods_by_category(session, base_url, token, categories):
                 break
 
             vods.extend(vod_list)
-            print_colored(json.dumps(vod_list[0], indent=2), "yellow")
-            break
             page += 1
 
         result[cat_title] = vods
@@ -373,3 +370,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
