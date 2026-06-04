@@ -124,13 +124,13 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 
 
 # ============================================================
-#  RESOLVER URL REAL DEL VOD (INDIVIDUAL)
+#  RESOLVER URL REAL DEL VOD (CORREGIDO)
 # ============================================================
 
 def resolve_vod_url(session, base_url, token, vod):
     cmd_value = vod.get("cmd", "")
 
-    # Si el cmd ya es URL directa
+    # Si el cmd ya es una URL directa
     if cmd_value.startswith("http"):
         return cmd_value
 
@@ -138,14 +138,14 @@ def resolve_vod_url(session, base_url, token, vod):
     try:
         decoded = base64.b64decode(cmd_value).decode("utf-8")
         payload = json.loads(decoded)
-    except:
+    except Exception:
         return None
 
-    # Usar el ID real del VOD (no el stream_id del payload)
+    # Usar el ID REAL del VOD (no stream_id)
     if "id" in vod:
         payload["id"] = vod["id"]
 
-    # Normalizar target_container
+    # Normalizar target_container (viene como string)
     tc = payload.get("target_container")
     if isinstance(tc, str):
         try:
@@ -153,9 +153,11 @@ def resolve_vod_url(session, base_url, token, vod):
         except:
             payload["target_container"] = ["ts"]
 
-    if isinstance(payload["target_container"], list):
+    # Asignar type correctamente
+    if isinstance(payload.get("target_container"), list) and payload["target_container"]:
         payload["type"] = payload["target_container"][0]
 
+    # Llamar a create_link
     url = f"{base_url}/portal.php?type=vod&action=create_link&JsHttpRequest=1-xml"
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -164,11 +166,13 @@ def resolve_vod_url(session, base_url, token, vod):
         print_colored(f"Respuesta create_link: {res.text}", "magenta")
         res.raise_for_status()
         return res.json().get("js", {}).get("cmd")
-    except:
+    except Exception as e:
+        print_colored(f"Error en create_link: {e}", "red")
         return None
 
+
 # ============================================================
-#  RESOLVER URLs EN PARALELO (TURBO MODE)
+#  RESOLVER URLs EN PARALELO (TURBO MODE) — CORREGIDO
 # ============================================================
 
 def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
@@ -176,13 +180,9 @@ def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
 
     resolved = {}
 
-def task(vod):
-    return vod["name"], resolve_vod_url(session, base_url, token, vod)
-        if cmd_value.startswith("ey"):
-            url = resolve_vod_url(session, base_url, token, cmd_value)
-            return vod["name"], url
-        else:
-            return vod["name"], cmd_value
+    def task(vod):
+        url = resolve_vod_url(session, base_url, token, vod)
+        return vod["name"], url
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(task, vod): vod for vod in vod_items}
