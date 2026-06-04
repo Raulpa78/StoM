@@ -290,6 +290,8 @@ def fetch_all_vods_by_category(session, base_url, token, categories):
                 break
 
             vods.extend(vod_list)
+            print_colored(json.dumps(vod_list[0], indent=2), "yellow")
+            break
             page += 1
 
         result[cat_title] = vods
