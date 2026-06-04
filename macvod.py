@@ -124,7 +124,7 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 
 
 # ============================================================
-#  RESOLVER URL REAL DEL VOD
+#  RESOLVER URL REAL DEL VOD (INDIVIDUAL)
 # ============================================================
 
 def resolve_vod_url(session, base_url, token, cmd_value):
@@ -134,7 +134,7 @@ def resolve_vod_url(session, base_url, token, cmd_value):
     except Exception:
         return None
 
-    # Normalizar campos para servidores que usan nombres distintos
+    # Normalizar campos
     if "stream_id" in payload:
         payload["id"] = payload["stream_id"]
 
@@ -153,6 +153,37 @@ def resolve_vod_url(session, base_url, token, cmd_value):
 
 
 # ============================================================
+#  RESOLVER URLs EN PARALELO (TURBO MODE)
+# ============================================================
+
+def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
+    print_colored("Resolviendo URLs reales en paralelo...", "yellow")
+
+    resolved = {}
+
+    def task(vod):
+        cmd_value = vod.get("cmd", "")
+        if not cmd_value:
+            return vod["name"], None
+
+        if cmd_value.startswith("ey"):
+            url = resolve_vod_url(session, base_url, token, cmd_value)
+            return vod["name"], url
+        else:
+            return vod["name"], cmd_value
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(task, vod): vod for vod in vod_items}
+
+        for future in as_completed(futures):
+            title, url = future.result()
+            resolved[title] = url
+
+    print_colored("Resolución de URLs completada.", "green")
+    return resolved
+
+
+# ============================================================
 #  EXPORTACIÓN A M3U POR CATEGORÍA
 # ============================================================
 
@@ -160,29 +191,19 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9_\-\.]', '_', name)
 
 
-def export_m3u_by_category(session, base_url, token, vod_items, category_title):
+def export_m3u_by_category(category_title, resolved_urls):
     safe_title = sanitize_filename(category_title)
     filename = f"tar_nex_vod_{safe_title}.m3u"
 
     with open(filename, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
 
-        for vod in vod_items:
-            title = vod.get("name", "Sin título")
-            cmd_value = vod.get("cmd", "")
-
-            if not cmd_value:
-                continue
-
-            # Resolver URL real
-            stream_url = resolve_vod_url(session, base_url, token, cmd_value) \
-                if cmd_value.startswith("ey") else cmd_value
-
-            if not stream_url:
+        for title, url in resolved_urls.items():
+            if not url:
                 continue
 
             f.write(f'#EXTINF:-1,{title}\n')
-            f.write(f'{stream_url}\n')
+            f.write(f'{url}\n')
 
     print_colored(f"M3U generado: {filename}", "green")
 
@@ -236,7 +257,7 @@ def download_posters_for_category(vod_items, category_title, max_workers=20):
 
 
 # ============================================================
-#  PROCESAR TODAS LAS CATEGORÍAS
+#  PROCESAR SOLO CATEGORÍAS FILTRADAS
 # ============================================================
 
 def fetch_all_vods_by_category(session, base_url, token, categories):
@@ -245,9 +266,6 @@ def fetch_all_vods_by_category(session, base_url, token, categories):
     for cat in categories:
         cat_id = cat.get("id")
         cat_title = cat.get("title", "Sin título")
-
-        if cat_id == "*":
-            continue
 
         print_colored(f"Procesando categoría: {cat_title}", "cyan")
 
@@ -318,7 +336,14 @@ def main():
         print_colored(f"Total VODs encontrados: {total_vods}", "green")
 
         for category_title, vod_items in vod_by_category.items():
-            export_m3u_by_category(session, base_url, token, vod_items, category_title)
+
+            # 🔥 RESOLVER URLs EN PARALELO (TURBO)
+            resolved_urls = resolve_urls_parallel(session, base_url, token, vod_items)
+
+            # Generar M3U
+            export_m3u_by_category(category_title, resolved_urls)
+
+            # Descargar carátulas
             download_posters_for_category(vod_items, category_title)
 
     except Exception as e:
