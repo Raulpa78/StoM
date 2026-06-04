@@ -127,28 +127,34 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 #  RESOLVER URL REAL DEL VOD (INDIVIDUAL)
 # ============================================================
 
-def resolve_vod_url(session, base_url, token, cmd_value):
+def resolve_vod_url(session, base_url, token, vod):
+    cmd_value = vod.get("cmd", "")
+
+    # Si el cmd ya es URL directa
+    if cmd_value.startswith("http"):
+        return cmd_value
+
+    # Decodificar Base64
     try:
         decoded = base64.b64decode(cmd_value).decode("utf-8")
         payload = json.loads(decoded)
-    except Exception:
+    except:
         return None
 
-    # Normalizar stream_id → id
-    if "stream_id" in payload:
-        payload["id"] = payload["stream_id"]
+    # Usar el ID real del VOD (no el stream_id del payload)
+    if "id" in vod:
+        payload["id"] = vod["id"]
 
-    # target_container viene como string → convertir a lista real
-    if "target_container" in payload:
-        tc = payload["target_container"]
-        if isinstance(tc, str):
-            try:
-                payload["target_container"] = json.loads(tc)
-            except:
-                payload["target_container"] = ["ts"]
+    # Normalizar target_container
+    tc = payload.get("target_container")
+    if isinstance(tc, str):
+        try:
+            payload["target_container"] = json.loads(tc)
+        except:
+            payload["target_container"] = ["ts"]
 
-        if isinstance(payload["target_container"], list) and payload["target_container"]:
-            payload["type"] = payload["target_container"][0]
+    if isinstance(payload["target_container"], list):
+        payload["type"] = payload["target_container"][0]
 
     url = f"{base_url}/portal.php?type=vod&action=create_link&JsHttpRequest=1-xml"
     headers = {"Authorization": f"Bearer {token}"}
@@ -158,8 +164,7 @@ def resolve_vod_url(session, base_url, token, cmd_value):
         print_colored(f"Respuesta create_link: {res.text}", "magenta")
         res.raise_for_status()
         return res.json().get("js", {}).get("cmd")
-    except Exception as e:
-        print_colored(f"Error en create_link: {e}", "red")
+    except:
         return None
 
 # ============================================================
@@ -172,10 +177,7 @@ def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
     resolved = {}
 
     def task(vod):
-        cmd_value = vod.get("cmd", "")
-        if not cmd_value:
-            return vod["name"], None
-
+    return vod["name"], resolve_vod_url(session, base_url, token, vod)
         if cmd_value.startswith("ey"):
             url = resolve_vod_url(session, base_url, token, cmd_value)
             return vod["name"], url
