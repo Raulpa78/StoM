@@ -176,7 +176,7 @@ def resolve_urls_parallel(session, base_url, token, vod_items, max_workers=30):
 
     resolved = {}
 
-    def task(vod):
+def task(vod):
     return vod["name"], resolve_vod_url(session, base_url, token, vod)
         if cmd_value.startswith("ey"):
             url = resolve_vod_url(session, base_url, token, cmd_value)
