@@ -130,23 +130,25 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 def resolve_vod_url(session, base_url, token, cmd_value):
     try:
         decoded = base64.b64decode(cmd_value).decode("utf-8")
-        print_colored(f"CMD decodificado: {decoded}", "yellow")
         payload = json.loads(decoded)
-    except Exception as e:
-        print_colored(f"Error decodificando cmd: {e}", "red")
+    except Exception:
         return None
 
-    # Si ya viene una URL en el JSON, úsala directamente
-    if isinstance(payload, dict) and "cmd" in payload and payload["cmd"].startswith("http"):
-        print_colored("Usando URL directa desde cmd (sin create_link)", "cyan")
-        return payload["cmd"]
-
-    # Normalizar campos para create_link
+    # Normalizar stream_id → id
     if "stream_id" in payload:
         payload["id"] = payload["stream_id"]
 
-    if "target_container" in payload and isinstance(payload["target_container"], list):
-        payload["type"] = payload["target_container"][0]
+    # target_container viene como string → convertir a lista real
+    if "target_container" in payload:
+        tc = payload["target_container"]
+        if isinstance(tc, str):
+            try:
+                payload["target_container"] = json.loads(tc)
+            except:
+                payload["target_container"] = ["ts"]
+
+        if isinstance(payload["target_container"], list) and payload["target_container"]:
+            payload["type"] = payload["target_container"][0]
 
     url = f"{base_url}/portal.php?type=vod&action=create_link&JsHttpRequest=1-xml"
     headers = {"Authorization": f"Bearer {token}"}
@@ -155,9 +157,7 @@ def resolve_vod_url(session, base_url, token, cmd_value):
         res = session.post(url, headers=headers, json=payload, timeout=10)
         print_colored(f"Respuesta create_link: {res.text}", "magenta")
         res.raise_for_status()
-        data = res.json().get("js", {})
-        real_url = data.get("cmd")
-        return real_url
+        return res.json().get("js", {}).get("cmd")
     except Exception as e:
         print_colored(f"Error en create_link: {e}", "red")
         return None
