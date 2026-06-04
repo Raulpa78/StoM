@@ -130,11 +130,18 @@ def get_vod_list(session, base_url, token, category_id, page=1):
 def resolve_vod_url(session, base_url, token, cmd_value):
     try:
         decoded = base64.b64decode(cmd_value).decode("utf-8")
+        print_colored(f"CMD decodificado: {decoded}", "yellow")
         payload = json.loads(decoded)
-    except Exception:
+    except Exception as e:
+        print_colored(f"Error decodificando cmd: {e}", "red")
         return None
 
-    # Normalizar campos
+    # Si ya viene una URL en el JSON, úsala directamente
+    if isinstance(payload, dict) and "cmd" in payload and payload["cmd"].startswith("http"):
+        print_colored("Usando URL directa desde cmd (sin create_link)", "cyan")
+        return payload["cmd"]
+
+    # Normalizar campos para create_link
     if "stream_id" in payload:
         payload["id"] = payload["stream_id"]
 
@@ -146,11 +153,14 @@ def resolve_vod_url(session, base_url, token, cmd_value):
 
     try:
         res = session.post(url, headers=headers, json=payload, timeout=10)
+        print_colored(f"Respuesta create_link: {res.text}", "magenta")
         res.raise_for_status()
-        return res.json().get("js", {}).get("cmd")
-    except:
+        data = res.json().get("js", {})
+        real_url = data.get("cmd")
+        return real_url
+    except Exception as e:
+        print_colored(f"Error en create_link: {e}", "red")
         return None
-
 
 # ============================================================
 #  RESOLVER URLs EN PARALELO (TURBO MODE)
