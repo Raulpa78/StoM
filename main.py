@@ -36,11 +36,18 @@ def input_colored(prompt: str, color: str) -> str:
 
 def get_env_or_input(env_name: str, prompt: str, uppercase: bool = False) -> str:
     value = os.getenv(env_name)
-    if value:
-        return value.upper() if uppercase else value
-    user_value = input_colored(prompt, "cyan")
-    return user_value.upper() if uppercase else user_value
 
+    # Si existe en el entorno (GitHub Actions), úsalo
+    if value is not None:
+        return value.upper() if uppercase else value
+
+    # Si NO existe, estamos en ejecución local → pedir input
+    if sys.stdin.isatty():
+        user_value = input_colored(prompt, "cyan")
+        return user_value.upper() if uppercase else user_value
+
+    # Si no hay input posible (GitHub Actions) → devolver vacío
+    return ""
 
 def get_base_url() -> str:
     base_url_input = os.getenv("IPTV_URL") or input_colored("Enter IPTV link: ", "cyan")
